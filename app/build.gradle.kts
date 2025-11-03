@@ -13,6 +13,9 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        // bảo đảm có .so đúng kiến trúc phổ biến
+        ndk { abiFilters += listOf("armeabi-v7a","arm64-v8a") }
     }
 
     buildTypes {
@@ -27,17 +30,16 @@ android {
 
     buildFeatures { viewBinding = true }
 
-    packaging {
-        resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}") }
-    }
+    packaging { resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}") } }
 
-    // ép Java/Kotlin dùng JDK 17
+    // ép Javac dùng JDK 17
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
-kotlin { jvmToolchain(17) }
+
+kotlin { jvmToolchain(17) } // ép Kotlin dùng JDK 17
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     kotlinOptions { jvmTarget = "17" }
 }
@@ -54,14 +56,12 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax_version")
     implementation("androidx.camera:camera-view:$camerax_version")
 
-    // TensorFlow Lite Task + Support
+    // TFLite Task + Support
     implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
-    // **Bổ sung JNI native bắt buộc**
+    // JNI native (fix task_vision_jni)
     implementation("org.tensorflow:tensorflow-lite:2.13.0")
-    // Nếu model dùng op mở rộng, bật thêm (không cần cho MobileNet):
+    // Nếu cần op mở rộng:
     // implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.13.0")
-    // Tùy chọn GPU:
-    // implementation("org.tensorflow:tensorflow-lite-gpu:2.13.0")
 }
