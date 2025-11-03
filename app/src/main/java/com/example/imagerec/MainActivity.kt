@@ -14,8 +14,6 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.task.vision.classifier.ImageClassifier
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
@@ -23,7 +21,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvResult: TextView
 
     private val cameraExecutor = Executors.newSingleThreadExecutor()
-    private var imageClassifier: ImageClassifier? = null
+    private var classifier: LiteClassifier? = null
 
     private val requestPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -50,11 +48,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun initClassifier() {
         try {
-            val options = ImageClassifier.ImageClassifierOptions.builder()
-                .setMaxResults(3)
-                .build()
-            imageClassifier = ImageClassifier.createFromFileAndOptions(this, "model.tflite", options)
-            tvResult.text = "Model loaded"
+            classifier = LiteClassifier(this, maxResults = 3, numThreads = 4)
+            tvResult.text = "Model loaded (Interpreter)"
         } catch (e: Exception) {
             tvResult.text = "Không load được model.tflite: ${e.message}"
         }
@@ -75,22 +70,18 @@ class MainActivity : AppCompatActivity() {
                 .setTargetResolution(Size(1280, 720))
                 .build()
 
-            analysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                classify(imageProxy)
-            }
-
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            analysis.setAnalyzer(cameraExecutor) { imageProxy -> analyze(imageProxy) }
 
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, analysis)
+                cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
             } catch (e: Exception) {
                 Toast.makeText(this, "Bind camera lỗi: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun classify(imageProxy: ImageProxy) {
+    private fun analyze(imageProxy: ImageProxy) {
         try {
             val plane = imageProxy.planes[0]
             val buffer = plane.buffer
@@ -103,18 +94,12 @@ class MainActivity : AppCompatActivity() {
 
             val rotated = rotateBitmap(bitmap, imageProxy.imageInfo.rotationDegrees.toFloat())
 
-            val classifier = imageClassifier
-            if (classifier != null) {
-                val tensor = TensorImage.fromBitmap(rotated)
-                val results = classifier.classify(tensor)
-
+            classifier?.let { clf ->
+                val results = clf.classify(rotated)
                 if (results.isNotEmpty()) {
-                    val cats = results[0].categories
-                    val top = cats.maxByOrNull { it.score }
                     val text = buildString {
-                        appendLine("Top-1: ${top?.label} (${String.format("%.2f", (top?.score ?: 0f) * 100)}%)")
-                        cats.take(3).forEachIndexed { idx, c ->
-                            appendLine("#${idx + 1} ${c.label} - ${String.format("%.2f", c.score * 100)}%")
+                        results.forEachIndexed { i, (label, score) ->
+                            appendLine("#${i+1} $label - ${String.format("%.2f", score * 100)}%")
                         }
                     }
                     runOnUiThread { tvResult.text = text }
@@ -129,8 +114,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun rotateBitmap(src: Bitmap, degrees: Float): Bitmap {
         if (degrees == 0f) return src
-        val m = Matrix()
-        m.postRotate(degrees)
+        val m = Matrix().apply { postRotate(degrees) }
         val rotated = Bitmap.createBitmap(src, 0, 0, src.width, src.height, m, true)
         if (rotated != src) src.recycle()
         return rotated
@@ -139,6 +123,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
-        imageClassifier?.close()
+        classifier?.close()
     }
 }

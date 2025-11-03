@@ -13,8 +13,6 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
-        // Đảm bảo có .so cho máy 32/64-bit phổ biến
         ndk { abiFilters += listOf("armeabi-v7a","arm64-v8a") }
     }
 
@@ -32,10 +30,9 @@ android {
 
     packaging {
         resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}") }
-        jniLibs { useLegacyPackaging = true }   // ép giải nén .so (tránh lỗi nạp JNI trên vài máy)
+        jniLibs { useLegacyPackaging = true }  // ép giải nén .so
     }
 
-    // ép Javac dùng JDK 17
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -58,12 +55,9 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax_version")
     implementation("androidx.camera:camera-view:$camerax_version")
 
-    // Task Vision + Support
-    implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
+    // TFLite Support + JNI (không dùng Task Vision)
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
-
-    // JNI runtime bắt buộc cho Interpreter
     implementation("org.tensorflow:tensorflow-lite:2.13.0")
-    // Nếu vẫn thiếu op: bật thêm (thường không cần cho MobileNet)
+    // Nếu model cần op mở rộng:
     // implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.13.0")
 }
