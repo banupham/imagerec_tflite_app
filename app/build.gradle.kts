@@ -14,7 +14,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // bảo đảm có .so đúng kiến trúc phổ biến
+        // Đảm bảo có .so cho máy 32/64-bit phổ biến
         ndk { abiFilters += listOf("armeabi-v7a","arm64-v8a") }
     }
 
@@ -30,7 +30,10 @@ android {
 
     buildFeatures { viewBinding = true }
 
-    packaging { resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}") } }
+    packaging {
+        resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}") }
+        jniLibs { useLegacyPackaging = true }   // ép giải nén .so (tránh lỗi nạp JNI trên vài máy)
+    }
 
     // ép Javac dùng JDK 17
     compileOptions {
@@ -38,8 +41,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
-
-kotlin { jvmToolchain(17) } // ép Kotlin dùng JDK 17
+kotlin { jvmToolchain(17) }
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     kotlinOptions { jvmTarget = "17" }
 }
@@ -56,12 +58,12 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax_version")
     implementation("androidx.camera:camera-view:$camerax_version")
 
-    // TFLite Task + Support
+    // Task Vision + Support
     implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
-    // JNI native (fix task_vision_jni)
+    // JNI runtime bắt buộc cho Interpreter
     implementation("org.tensorflow:tensorflow-lite:2.13.0")
-    // Nếu cần op mở rộng:
+    // Nếu vẫn thiếu op: bật thêm (thường không cần cho MobileNet)
     // implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.13.0")
 }
