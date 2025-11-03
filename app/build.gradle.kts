@@ -1,4 +1,3 @@
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -36,9 +35,20 @@ android {
         }
     }
 
-    androidResources {
-        // Don't compress tflite for faster load
-        noCompress += listOf("tflite")
+    // ép Java 17 cho cả Javac
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+// ép Kotlin dùng toolchain JDK 17 + jvmTarget=17
+kotlin {
+    jvmToolchain(17)
+}
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 
