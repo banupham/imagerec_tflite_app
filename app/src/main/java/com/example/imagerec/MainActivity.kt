@@ -15,6 +15,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
@@ -48,7 +49,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initClassifier() {
         try {
-            classifier = LiteClassifier(this, maxResults = 3, numThreads = 4)
+            classifier = LiteClassifier(this, maxResults = 3, numThreads = 4, minScore = 0.20f)
             tvResult.text = "Model loaded (Interpreter)"
         } catch (e: Exception) {
             tvResult.text = "Không load được model.tflite: ${e.message}"
@@ -96,14 +97,17 @@ class MainActivity : AppCompatActivity() {
 
             classifier?.let { clf ->
                 val results = clf.classify(rotated)
-                if (results.isNotEmpty()) {
-                    val text = buildString {
-                        results.forEachIndexed { i, (label, score) ->
-                            appendLine("#${i+1} $label - ${String.format("%.2f", score * 100)}%")
+                val text = if (results.isEmpty()) {
+                    "Không chắc chắn (score < 20%)"
+                } else {
+                    buildString {
+                        results.forEachIndexed { i, (label, p) ->
+                            appendLine("#${i+1} $label - " +
+                                String.format(Locale.US, "%.2f", p * 100f) + "%")
                         }
                     }
-                    runOnUiThread { tvResult.text = text }
                 }
+                runOnUiThread { tvResult.text = text }
             }
         } catch (e: Exception) {
             runOnUiThread { tvResult.text = "Lỗi phân loại: ${e.message}" }
